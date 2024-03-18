@@ -1,4 +1,5 @@
-import { Column, OneToMany, Entity, PrimaryGeneratedColumn } from 'typeorm'
+import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm'
+
 import { NewsTranslation } from './news-translation.entity'
 
 @Entity()

@@ -1,6 +1,8 @@
-import { DataSource } from 'typeorm'
 import * as dotenv from 'dotenv'
+import { DataSource } from 'typeorm'
+
 import { DatabaseNamingStrategy } from 'src/db/database-naming.strategy'
+
 dotenv.config({ path: '.env.workspace' })
 
 export const dataSource = new DataSource({

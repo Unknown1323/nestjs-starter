@@ -3,7 +3,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm'
 export class Migrations1710789008978 implements MigrationInterface {
   name = 'Migrations1710789008978'
 
-  public async up(queryRunner: QueryRunner): Promise<void> {
+  async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
       `CREATE TABLE "appeal" ("id" SERIAL NOT NULL, "title" character varying, "slug" text NOT NULL, "thumbnailUrl" text NOT NULL, "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), CONSTRAINT "PK_f644a99d2dfcff9facb08bd1697" PRIMARY KEY ("id"))`,
     )
@@ -20,15 +20,15 @@ export class Migrations1710789008978 implements MigrationInterface {
     INSERT INTO "news" ("title", "description", "publishDate", "published")
     VALUES
         ('Новина 1', 'Опис новини 1', 'now()', true),
-        ('Новина 2', 'Опис новини 2', 'now()', true),
+        ('Новина 2', 'Опис новини 2', 'now()', false),
         ('Новина 3', 'Опис новини 3', 'now()', true),
         ('Новина 4', 'Опис новини 4', 'now()', true),
-        ('Новина 5', 'Опис новини 5', 'now()', true),
+        ('Новина 5', 'Опис новини 5', 'now()', false),
         ('Новина 6', 'Опис новини 6', 'now()', true)
 `)
   }
 
-  public async down(queryRunner: QueryRunner): Promise<void> {
+  async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`ALTER TABLE "news_translation" DROP CONSTRAINT "FK_03a6155d79d5ea69f5114bf271a"`)
     await queryRunner.query(`DROP TABLE "news"`)
     await queryRunner.query(`DROP TABLE "news_translation"`)

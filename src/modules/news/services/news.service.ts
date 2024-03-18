@@ -1,7 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
-import { News } from '../entities/news.entity'
+
+import { News } from 'src/modules/news/entities/news.entity'
 
 @Injectable()
 export class NewsService {
@@ -16,11 +17,16 @@ export class NewsService {
 
   async findOne(id: string): Promise<News> {
     const news = await this.newsRepository.findOne({
-      where: { id, published: true },
+      where: { id },
     })
     if (!news) {
       throw new NotFoundException('News not found')
     }
+
+    if (!news.published) {
+      throw new NotFoundException('News is not published')
+    }
+
     return news
   }
 }
