@@ -13,7 +13,7 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, { bufferLogs: true })
 
   app.useGlobalFilters(new AllExceptionFilter())
-  dotenv.config({ path: '.env.workspace' })
+  dotenv.config()
 
   app.use(bodyParser.json({ limit: '50mb' }))
   app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }))

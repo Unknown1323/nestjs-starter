@@ -4,8 +4,11 @@ import { News } from './news.entity'
 
 @Entity()
 export class NewsTranslation {
-  @PrimaryGeneratedColumn()
-  id: number
+  @PrimaryGeneratedColumn('uuid')
+  id: string
+
+  @ManyToOne(() => News, (news) => news.translations)
+  news: News
 
   @Column()
   language: string
@@ -13,9 +16,6 @@ export class NewsTranslation {
   @Column()
   title: string
 
-  @Column()
+  @Column({ nullable: true })
   description: string
-
-  @ManyToOne(() => News, (news) => news.translations)
-  news: News
 }

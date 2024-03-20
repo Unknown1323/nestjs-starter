@@ -2,14 +2,13 @@ import { Module } from '@nestjs/common'
 import { TypeOrmModule } from '@nestjs/typeorm'
 import * as dotenv from 'dotenv'
 import { CommandModule } from 'nestjs-command'
+import { NewsSeedService } from 'src/seeds/news.seed'
 
-import { NewsModule } from './modules/news/news.module'
-
-import { DatabaseNamingStrategy } from 'src/db/database-naming.strategy'
+import { DatabaseNamingStrategy } from './db/database-naming.strategy'
 
 import { MainModule } from 'src/modules/main/main.module'
 
-dotenv.config({ path: '.env.workspace' })
+dotenv.config()
 
 @Module({
   imports: [
@@ -26,9 +25,8 @@ dotenv.config({ path: '.env.workspace' })
     }),
     CommandModule,
     MainModule,
-    NewsModule,
   ],
   controllers: [],
-  providers: [],
+  providers: [NewsSeedService],
 })
 export class AppModule {}

@@ -3,7 +3,7 @@ import { DataSource } from 'typeorm'
 
 import { DatabaseNamingStrategy } from 'src/db/database-naming.strategy'
 
-dotenv.config({ path: '.env.workspace' })
+dotenv.config()
 
 export const dataSource = new DataSource({
   type: 'postgres',
