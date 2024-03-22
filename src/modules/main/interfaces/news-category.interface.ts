@@ -1,6 +1,6 @@
 export interface NewsCategory {
   id: string
   createdAt: Date
-  language: string
+  lang: string
   title: string
 }
