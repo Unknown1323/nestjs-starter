@@ -3,10 +3,9 @@ import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
 
 import { CreateCategoryNewsDto } from 'src/modules/main/dto/requests/create-news-category.dto'
-import { UpdateNewsCategoryDto } from 'src/modules/main/dto/requests/update-news-category.dto'
 
+import { NewsCategoryTranslation } from 'src/modules/main/entities/news-category-translation.entity'
 import { NewsCategory } from 'src/modules/main/entities/news-category.entity'
-import { Translation } from 'src/modules/main/entities/translation.entity'
 
 import { CategoryDataMapper } from 'src/modules/main/data-mappers/news-category.data-mapper'
 
@@ -16,39 +15,46 @@ export class NewsCategoryService {
     private readonly newsDataMapper: CategoryDataMapper,
     @InjectRepository(NewsCategory)
     private categoryRepository: Repository<NewsCategory>,
-    @InjectRepository(Translation)
-    private translationRepository: Repository<Translation>,
+    @InjectRepository(NewsCategoryTranslation)
+    private translationRepository: Repository<NewsCategoryTranslation>,
   ) {}
 
-  async findAll(): Promise<NewsCategory[]> {
-    return await this.categoryRepository.find({ relations: ['translationList'] })
+  async findAll(startIndex = 0, endIndex = 10): Promise<{ categories: NewsCategory[]; total: number }> {
+    const correctedStartIndex = Math.max(startIndex - 1, 0)
+    const categories = await this.categoryRepository.find({
+      relations: ['translationList'],
+      skip: correctedStartIndex,
+      take: endIndex - correctedStartIndex,
+    })
+    const total = await this.categoryRepository.count()
+
+    return { categories, total }
   }
 
   async findOne(id: string): Promise<any> {
-    const translation = await this.translationRepository.findOne({ where: { id }, relations: ['category'] })
+    const result = await this.translationRepository.findOne({
+      where: { id },
+      relations: ['category'],
+    })
+    if (result) {
+      const transformedResult = {
+        id: result.category.id,
+        publishedAt: result.category.publishedAt,
+        createdAt: result.category.createdAt,
+        updatedAt: result.category.updatedAt,
+        translationList: [
+          {
+            id: result.id,
+            lang: result.lang,
+            title: result.title,
+          },
+        ],
+      }
 
-    if (!translation) {
+      return transformedResult
+    } else {
       return null
     }
-    const category = translation.category
-    const data = {
-      id: translation.id,
-      publishedAt: category.publishedAt,
-      categoryId: category.id,
-      title: translation.title,
-      createdAt: category.createdAt,
-      updatedAt: category.updatedAt,
-      translationList: [
-        {
-          lang: translation.lang,
-          title: translation.title,
-          description: translation.description,
-          thumbnailUrl: translation.thumbnailUrl,
-        },
-      ],
-    }
-
-    return data
   }
 
   async create(categoryNewsDto: CreateCategoryNewsDto): Promise<NewsCategory> {
@@ -59,22 +65,15 @@ export class NewsCategoryService {
     return await this.newsDataMapper.updateCategoryWithTranslations(id, updateCategoryDto)
   }
 
-  async remove(id: string): Promise<void> {
-    const categoryToRemove = await this.categoryRepository.findOne({
+  async remove(id: string): Promise<NewsCategoryTranslation> {
+    const translationToRemove = await this.translationRepository.findOne({
       where: { id },
-      relations: ['translationList'],
     })
 
-    if (!categoryToRemove) {
+    if (!translationToRemove) {
       throw new NotFoundException(`Category${id} not found`)
     }
 
-    await Promise.all(
-      categoryToRemove.translationList.map(async (translation) => {
-        await this.translationRepository.remove(translation)
-      }),
-    )
-
-    await this.categoryRepository.remove(categoryToRemove)
+    return this.translationRepository.remove(translationToRemove)
   }
 }

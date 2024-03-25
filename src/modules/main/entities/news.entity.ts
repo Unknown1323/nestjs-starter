@@ -1,7 +1,7 @@
 import { Column, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn } from 'typeorm'
 
 import { NewsCategory } from 'src/modules/main/entities/news-category.entity'
-import { Translation } from 'src/modules/main/entities/translation.entity'
+import { NewsTranslation } from 'src/modules/main/entities/news-translation.entity'
 
 @Entity()
 export class News {
@@ -9,16 +9,16 @@ export class News {
   id: string
 
   @Column({ default: false })
-  publishedAt: boolean
+  isPublished: boolean
 
   @Column()
   slug: string
 
-  @Column({ nullable: true })
-  newsCategoryId: string | null
-
   @Column()
   thumbnailUrl: string
+
+  @Column({ type: 'timestamp', nullable: true })
+  publishedAt: Date
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date
@@ -26,8 +26,8 @@ export class News {
   @Column({ type: 'timestamp', nullable: true })
   updatedAt: Date
 
-  @OneToMany(() => Translation, (translation) => translation.news)
-  translationList: Translation[]
+  @OneToMany(() => NewsTranslation, (translation) => translation.news)
+  translationList: NewsTranslation[]
 
   @ManyToOne(() => NewsCategory, (category) => category.news)
   newsCategory: NewsCategory

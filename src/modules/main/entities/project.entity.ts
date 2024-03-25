@@ -1,6 +1,6 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm'
 
-@Entity('appeal')
+@Entity()
 export class ProjectEntity {
   @PrimaryGeneratedColumn()
   id: number

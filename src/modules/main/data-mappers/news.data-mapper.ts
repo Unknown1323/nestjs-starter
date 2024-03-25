@@ -2,17 +2,21 @@ import { Injectable } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
 
-import { News } from 'src/modules/main/entities/news.entity' // Убедитесь, что путь указан правильно
-import { Translation } from 'src/modules/main/entities/translation.entity' // Убедитесь, что путь указан правильно
 import { CreateTranslationDto } from 'src/modules/main/dto/requests/create-translation.dto'
+
+import { NewsCategoryTranslation } from 'src/modules/main/entities/news-category-translation.entity'
+import { NewsTranslation } from 'src/modules/main/entities/news-translation.entity'
+import { News } from 'src/modules/main/entities/news.entity'
 
 @Injectable()
 export class NewsDataMapper {
   constructor(
     @InjectRepository(News)
     private readonly newsRepository: Repository<News>,
-    @InjectRepository(Translation)
-    private readonly translationRepository: Repository<Translation>,
+    @InjectRepository(NewsTranslation)
+    private readonly translationRepository: Repository<NewsTranslation>,
+    @InjectRepository(NewsCategoryTranslation)
+    private readonly categorytranslationRepository: Repository<NewsCategoryTranslation>,
   ) {}
 
   async updateNewsTranslations(news: News, translationList: CreateTranslationDto[]): Promise<void> {
@@ -45,5 +49,38 @@ export class NewsDataMapper {
     const translations = translationList.map((translationData) => ({ ...translationData, news: news }))
 
     await this.translationRepository.save(translations)
+  }
+
+  async mapUpdateDtoToEntities(updateNewsDto: any, translationToUpdate: any): Promise<void> {
+    const { newsCategory, translationList, ...newsData } = updateNewsDto
+
+    const translationData = translationList[0]
+    let categoryToUpdate = null
+    if (newsCategory) {
+      const result = await this.categorytranslationRepository.findOne({
+        where: { id: newsCategory.id },
+        relations: ['category'],
+      })
+
+      categoryToUpdate = result?.category
+    }
+
+    translationToUpdate.title = translationData.title
+    translationToUpdate.description = translationData.description
+    translationToUpdate.thumbnailUrl = translationData.thumbnailUrl
+    translationToUpdate.htmlText = translationData.contentData.htmlText
+    translationToUpdate.metaTitle = translationData.metaData.title
+    translationToUpdate.metaDescription = translationData.metaData.description
+    translationToUpdate.metaKeywords = translationData.metaData.keywords
+    translationToUpdate.ogTitle = translationData.metaData.ogTitle
+    translationToUpdate.ogDescription = translationData.metaData.ogDescription
+    translationToUpdate.ogImage = translationData.metaData.ogImageUrl
+
+    const { news } = translationToUpdate
+
+    news.updatedAt = news.updatedAt
+    news.publishedAt = newsData.publishedAt
+    news.isPublished = true
+    news.newsCategory = categoryToUpdate
   }
 }

@@ -2,12 +2,13 @@ import { Injectable, NotFoundException } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
 
+import { CreateNewsDto } from 'src/modules/main/dto/requests/create-news.dto'
+
+import { NewsCategoryTranslation } from 'src/modules/main/entities/news-category-translation.entity'
+import { NewsTranslation } from 'src/modules/main/entities/news-translation.entity'
 import { News } from 'src/modules/main/entities/news.entity'
-import { Translation } from 'src/modules/main/entities/translation.entity'
 
 import { NewsDataMapper } from 'src/modules/main/data-mappers/news.data-mapper'
-
-import { CreateNewsDto } from 'src/modules/main/dto/requests/create-news.dto'
 
 @Injectable()
 export class NewsService {
@@ -15,8 +16,10 @@ export class NewsService {
     private readonly newsDataMapper: NewsDataMapper,
     @InjectRepository(News)
     private readonly newsRepository: Repository<News>,
-    @InjectRepository(Translation)
-    private readonly translationRepository: Repository<Translation>,
+    @InjectRepository(NewsTranslation)
+    private readonly translationRepository: Repository<NewsTranslation>,
+    @InjectRepository(NewsCategoryTranslation)
+    private readonly categorytranslationRepository: Repository<NewsCategoryTranslation>,
   ) {}
 
   async findAll(
@@ -24,87 +27,127 @@ export class NewsService {
     publishedBefore?: Date,
     publishedAfter?: Date,
     newsCategory?: string,
-    sortColumn?: string,
-    sortDirection?: string,
-    startIndex?: number,
-    endIndex?: number,
+    sortColumn = 'id',
+    sortDirection = 'ASC',
+    startIndex = 1,
+    endIndex = 10,
     totalRecords?: number,
     lang?: string,
   ): Promise<any> {
     try {
-      let query = this.newsRepository
+      const query = this.newsRepository
         .createQueryBuilder('news')
-        .addSelect('news.newsCategoryId')
         .leftJoinAndSelect('news.translationList', 'translation')
+        .leftJoin('news.newsCategory', 'category')
+        .leftJoin('category.translationList', 'categoryTranslation', 'categoryTranslation.lang = :lang', { lang })
+        .select([
+          'news.id',
+          'news.isPublished',
+          'news.slug',
+          'news.thumbnailUrl',
+          'news.publishedAt',
+          'news.createdAt',
+          'news.updatedAt',
+          'translation',
+          'category.id',
+          'categoryTranslation',
+          'category',
+        ])
+
+      if (sortColumn === 'title') {
+        query.orderBy(`translationList.${sortColumn}`, sortDirection as 'ASC' | 'DESC')
+      } else if (sortColumn === 'newsCategory') {
+        query.orderBy(`translationList[0].title`, sortDirection as 'ASC' | 'DESC')
+      } else if (sortDirection && (sortDirection.toUpperCase() === 'ASC' || sortDirection.toUpperCase() === 'DESC')) {
+        query.orderBy(`news.${sortColumn}`, sortDirection as 'ASC' | 'DESC')
+      } else {
+        query.orderBy(`news.id`, 'ASC')
+      }
 
       if (searchTerm) {
-        query = query.where('translation.title ILIKE :searchTerm OR translation.title ILIKE :searchTerm', {
-          searchTerm: `%${searchTerm}%`,
-        })
+        query.andWhere('translation.title ILIKE :searchTerm', { searchTerm: `%${searchTerm}%` })
       }
 
       if (publishedBefore) {
-        query = query.andWhere('news.publishDate <= :publishedBefore', { publishedBefore })
+        query.andWhere('news.publishDate <= :publishedBefore', { publishedBefore })
       }
 
       if (publishedAfter) {
-        query = query.andWhere('news.publishDate >= :publishedAfter', { publishedAfter })
+        query.andWhere('news.publishDate >= :publishedAfter', { publishedAfter })
       }
 
       if (newsCategory) {
-        query = query
-          .innerJoin('news.newsCategory', 'category')
-          .andWhere('category.id = :newsCategory', { newsCategory })
-      }
-
-      if (startIndex !== undefined && endIndex !== undefined) {
-        query = query.skip(startIndex).take(endIndex - startIndex + 1)
+        query.andWhere('categoryTranslation.id = :newsCategory', { newsCategory })
       }
 
       if (lang) {
-        query = query.innerJoinAndSelect(
-          'news.translationList',
-          'filteredTranslation',
-          'filteredTranslation.newsId = news.id AND filteredTranslation.lang = :lang',
-          { lang },
-        )
+        query.andWhere('translation.lang = :lang', { lang })
       }
-      await query.getMany()
 
-      const newsList = await query.getMany()
+      const total = await query.getCount()
+      const newsList = await query
+        .skip(startIndex - 1)
+        .take(endIndex - startIndex + 1)
+        .getMany()
 
-      const updatedNewsList = await Promise.all(
-        newsList.map(async (news) => {
-          const categoryTranslation = await this.translationRepository
-            .createQueryBuilder('translation')
-            .innerJoinAndSelect('translation.category', 'category')
-            .where('category.id = :categoryId', { categoryId: news.newsCategoryId })
-            .andWhere('translation.lang = :lang', { lang })
-            .getOne()
-
-          const newsCategory = categoryTranslation ? categoryTranslation.title : null
-
-          return { ...news, newsCategory }
-        }),
-      )
-
-      return updatedNewsList
-    } catch (error) {
+      return { data: newsList, total }
+    } catch (error: any) {
       throw new NotFoundException(`Failed to find news: ${error}`)
     }
   }
 
-  async findOne(id: string): Promise<News> {
+  async findOne(id: string): Promise<any> {
     try {
-      const news = await this.newsRepository.findOne({
-        where: { id, publishedAt: true },
-        relations: ['translationList'],
-      })
+      const news = await this.translationRepository
+        .createQueryBuilder('translation')
+        .leftJoinAndSelect('translation.news', 'news')
+        .leftJoinAndSelect('news.newsCategory', 'newsCategory')
+        .leftJoinAndSelect(
+          'newsCategory.translationList',
+          'categoryTranslation',
+          'categoryTranslation.lang = translation.lang',
+        )
+        .leftJoinAndSelect('newsCategory.translationList', 'translationList')
+        .where('translation.id = :id', { id })
+        .getOne()
+
       if (!news) {
         throw new NotFoundException('News not found')
       }
 
-      return news
+      const transformedResult = {
+        id: news.news.id,
+        createdAt: news.news.createdAt,
+        updatedAt: news.news.updatedAt,
+        slug: news.news.slug,
+        publishedAt: news.news.publishedAt,
+        translationList: [
+          {
+            id: news.id,
+            lang: news.lang,
+            title: news.title,
+            description: news.description,
+            thumbnailUrl: news.thumbnailUrl,
+            publishedAt: news.news.publishedAt,
+            metaData: {
+              title: news.metaDescription,
+              description: news.metaDescription,
+              keywords: news.metaKeywords,
+              ogTitle: news.ogTitle,
+              ogDescription: news.ogDescription,
+              ogImageUrl: news.ogImage,
+            },
+            contentData: {
+              htmlText: news.htmlText,
+            },
+          },
+        ],
+        newsCategory:
+          news.news.newsCategory?.translationList.find((translation) => translation.lang === news.lang) ??
+          news.news.newsCategory,
+      }
+
+      return transformedResult
     } catch (error) {
       throw new NotFoundException(`Failed to find news: ${error}`)
     }
@@ -125,40 +168,63 @@ export class NewsService {
     }
   }
 
-  async update(newsId: string, updateNewsDto): Promise<News> {
+  async update(newsId: string, updateNewsDto): Promise<any> {
     try {
-      const { translationList, ...newsData } = updateNewsDto
+      const { newsCategory, translationList, ...newsData } = updateNewsDto
 
-      const news = await this.newsRepository.findOne({ where: { id: newsId }, relations: ['translationList'] })
-      if (!news) {
-        throw new NotFoundException(`News with newsId ${newsId} not found`)
+      const translationToUpdate = await this.translationRepository
+        .createQueryBuilder('translation')
+        .leftJoinAndSelect('translation.news', 'news')
+        .leftJoinAndSelect('news.newsCategory', 'category')
+        .where('translation.id = :id', { id: newsId })
+        .getOneOrFail()
+      const { news } = translationToUpdate
+
+      let categoryToUpdate = null
+      if (newsCategory) {
+        const result = await this.categorytranslationRepository.findOne({
+          where: { id: newsCategory.id },
+          relations: ['category'],
+        })
+
+        categoryToUpdate = result?.category
       }
 
-      await this.newsRepository.update(news.id, newsData)
-      await this.newsDataMapper.updateNewsTranslations(news, translationList)
+      const translationData = translationList[0]
 
-      return news
+      translationToUpdate.title = translationData.title
+      translationToUpdate.description = translationData.description
+      translationToUpdate.thumbnailUrl = translationData.thumbnailUrl
+      translationToUpdate.htmlText = translationData.contentData.htmlText
+      translationToUpdate.metaTitle = translationData.metaData.title
+      translationToUpdate.metaDescription = translationData.metaData.description
+      translationToUpdate.metaKeywords = translationData.metaData.keywords
+      translationToUpdate.ogTitle = translationData.metaData.ogTitle
+      translationToUpdate.ogDescription = translationData.metaData.ogDescription
+      translationToUpdate.ogImage = translationData.metaData.ogImageUrl
+
+      news.updatedAt = news.updatedAt
+      news.publishedAt = newsData.publishedAt
+      news.isPublished = true
+      news.newsCategory = categoryToUpdate
+      const updateNew = await this.newsRepository.save(news)
+      const updatedTranslations = await this.translationRepository.save(translationToUpdate)
+
+      return [updateNew, updatedTranslations]
     } catch (error) {
       throw new NotFoundException(`Failed to update news: ${error}`)
     }
   }
 
-  async delete(id: string): Promise<void> {
-    const newsToRemove = await this.newsRepository.findOne({
+  async delete(id: string): Promise<NewsTranslation> {
+    const newsToRemove = await this.translationRepository.findOne({
       where: { id },
-      relations: ['translationList'],
     })
 
     if (!newsToRemove) {
       throw new NotFoundException(`News ${id} not found`)
     }
 
-    await Promise.all(
-      newsToRemove.translationList.map(async (translation) => {
-        await this.translationRepository.remove(translation)
-      }),
-    )
-
-    await this.newsRepository.remove(newsToRemove)
+    return await this.translationRepository.remove(newsToRemove)
   }
 }

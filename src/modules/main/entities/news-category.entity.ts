@@ -1,7 +1,7 @@
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm'
 
-import { News } from 'src/modules/main/entities//news.entity'
-import { Translation } from 'src/modules/main/entities/translation.entity'
+import { NewsCategoryTranslation } from 'src/modules/main/entities/news-category-translation.entity'
+import { News } from 'src/modules/main/entities/news.entity'
 
 @Entity()
 export class NewsCategory {
@@ -17,8 +17,8 @@ export class NewsCategory {
   @Column({ type: 'timestamp', nullable: true })
   updatedAt: Date
 
-  @OneToMany(() => Translation, (translation) => translation.category)
-  translationList: Translation[]
+  @OneToMany(() => NewsCategoryTranslation, (translation) => translation.category)
+  translationList: NewsCategoryTranslation[]
 
   @OneToMany(() => News, (news) => news.newsCategory)
   news: News[]

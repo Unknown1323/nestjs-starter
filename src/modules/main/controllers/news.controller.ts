@@ -3,16 +3,18 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
+  HttpException,
+  HttpStatus,
   Param,
   Post,
   Put,
   Query,
   ValidationPipe,
-  HttpException,
-  HttpStatus,
 } from '@nestjs/common'
 
 import { CreateNewsDto } from 'src/modules/main/dto/requests/create-news.dto'
+import { UpdateNewsDto } from 'src/modules/main/dto/requests/update-news.dto'
 
 import { News } from 'src/modules/main/entities/news.entity'
 
@@ -50,18 +52,18 @@ export class NewsController {
         lang,
       )
 
-      return { data: newsData, meta: { total: newsData.length } }
+      return { data: newsData.data, meta: { total: newsData.total } }
     } catch (error) {
       throw new HttpException('Failed to fetch news', HttpStatus.INTERNAL_SERVER_ERROR)
     }
   }
 
   @Get('/item/:id')
-  async findOne(@Param('id') id: string): Promise<News> {
+  async findOne(@Param('id') id: string): Promise<{ data: News[] }> {
     try {
       const news = await this.newsService.findOne(id)
 
-      return news
+      return { data: news }
     } catch (error) {
       throw new HttpException('News not found', HttpStatus.NOT_FOUND)
     }
@@ -73,27 +75,32 @@ export class NewsController {
       const createdNews = await this.newsService.create(createNewsDto)
 
       return createdNews
-    } catch (error: any) {
+    } catch (error) {
       throw new HttpException('Failed to create news1', HttpStatus.INTERNAL_SERVER_ERROR)
     }
   }
 
   @Put('/item/:id')
-  async update(@Param('id') id: string, @Body(new ValidationPipe()) updateNewsDto: CreateNewsDto): Promise<News> {
+  async update(
+    @Param('id') id: string,
+    @Body(new ValidationPipe()) updateNewsDto: UpdateNewsDto,
+  ): Promise<UpdateNewsDto> {
     try {
       const updatedNews = await this.newsService.update(id, updateNewsDto)
 
       return updatedNews
-    } catch (error: any) {
-      console.log(error.message)
+    } catch (error) {
       throw new HttpException('Failed to update news1', HttpStatus.INTERNAL_SERVER_ERROR)
     }
   }
 
   @Delete('/item/:id')
-  async delete(@Param('id') id: string): Promise<void> {
+  @HttpCode(HttpStatus.OK)
+  async delete(@Param('id') id: string): Promise<any> {
     try {
       await this.newsService.delete(id)
+
+      return [{ data: {} }]
     } catch (error) {
       throw new HttpException('Failed to delete news', HttpStatus.INTERNAL_SERVER_ERROR)
     }

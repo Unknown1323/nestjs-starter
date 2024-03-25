@@ -9,6 +9,7 @@ import {
   Param,
   Post,
   Put,
+  Query,
   Res,
   UsePipes,
   ValidationPipe,
@@ -18,6 +19,7 @@ import { Response } from 'express'
 import { CreateCategoryNewsDto } from 'src/modules/main/dto/requests/create-news-category.dto'
 import { UpdateNewsCategoryDto } from 'src/modules/main/dto/requests/update-news-category.dto'
 
+import { NewsCategoryTranslation } from 'src/modules/main/entities/news-category-translation.entity'
 import { NewsCategory } from 'src/modules/main/entities/news-category.entity'
 
 import { NewsCategoryService } from 'src/modules/main/services/category.service'
@@ -27,19 +29,21 @@ export class CategoryController {
   constructor(private readonly newsCategoryService: NewsCategoryService) {}
 
   @Get('/list')
-  async findAll(): Promise<{ data: NewsCategory[]; meta: { total: number } }> {
-    const categories = await this.newsCategoryService.findAll()
+  async findAll(
+    @Query('startIndex') startIndex?: number,
+    @Query('endIndex') endIndex?: number,
+  ): Promise<{ data: NewsCategory[]; meta: { total: number } }> {
+    const { categories, total } = await this.newsCategoryService.findAll(startIndex, endIndex)
 
-    return { data: categories, meta: { total: categories.length } }
+    return { data: categories, meta: { total } }
   }
 
   @Get('item/:id')
   async findOne(@Param('id') id: string, @Res() res: Response): Promise<void> {
     try {
       const category = await this.newsCategoryService.findOne(id)
-      // Формуємо об'єкт з ключем "data"
       const responseData = { data: category }
-      // Відправляємо відповідь з об'єктом даних у форматі { data: ... }
+
       res.status(HttpStatus.OK).json(responseData)
     } catch (error) {
       throw new NotFoundException(`Category with ID ${id} not found`)
@@ -48,7 +52,7 @@ export class CategoryController {
 
   @Get('/reference')
   async getReference(): Promise<{ data: NewsCategory[] }> {
-    const categories = await this.newsCategoryService.findAll()
+    const { categories } = await this.newsCategoryService.findAll()
 
     return { data: categories }
   }
@@ -82,10 +86,10 @@ export class CategoryController {
   }
 
   @Delete('/item/:id')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(@Param('id') id: string): Promise<void> {
+  @HttpCode(HttpStatus.OK)
+  async remove(@Param('id') id: string): Promise<NewsCategoryTranslation> {
     try {
-      await this.newsCategoryService.remove(id)
+      return await this.newsCategoryService.remove(id)
     } catch (error) {
       throw new NotFoundException(`Category with ID ${id} not found`)
     }

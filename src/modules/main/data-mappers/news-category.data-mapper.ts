@@ -1,29 +1,26 @@
-import { Injectable, HttpException, HttpStatus } from '@nestjs/common'
-import { Repository } from 'typeorm'
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
-
-import { NewsCategory } from 'src/modules/main/entities/news-category.entity'
-import { Translation } from 'src/modules/main/entities/translation.entity'
+import { Repository } from 'typeorm'
 
 import { CreateCategoryNewsDto } from 'src/modules/main/dto/requests/create-news-category.dto'
 
-import { UpdateNewsCategoryDto } from 'src/modules/main/dto/requests/update-news-category.dto'
+import { NewsCategoryTranslation } from 'src/modules/main/entities/news-category-translation.entity'
+import { NewsCategory } from 'src/modules/main/entities/news-category.entity'
 
 @Injectable()
 export class CategoryDataMapper {
   constructor(
     @InjectRepository(NewsCategory)
     private categoryRepository: Repository<NewsCategory>,
-    @InjectRepository(Translation)
-    private translationRepository: Repository<Translation>,
+    @InjectRepository(NewsCategoryTranslation)
+    private translationRepository: Repository<NewsCategoryTranslation>,
   ) {}
 
   async createCategoryWithTranslations(categoryNewsDto: CreateCategoryNewsDto): Promise<NewsCategory> {
-    const { publishedAt, translationList } = categoryNewsDto
+    const { translationList } = categoryNewsDto
 
     const newsCategory = new NewsCategory()
 
-    newsCategory.publishedAt = publishedAt
     const createdCategory = await this.categoryRepository.save(newsCategory)
 
     await this.createTranslations(createdCategory, translationList)
@@ -31,44 +28,30 @@ export class CategoryDataMapper {
     return createdCategory
   }
 
-  async updateCategoryWithTranslations(id: string, updateCategoryDto: UpdateNewsCategoryDto): Promise<NewsCategory> {
+  async updateCategoryWithTranslations(id: string, updateCategoryDto: any): Promise<any> {
     try {
-      const { translationList, ...categoryData } = updateCategoryDto
-      const categoryId = { ...categoryData }
-      const category = await this.categoryRepository.findOneOrFail({
-        where: { id },
-        relations: ['translationList'],
-      })
-
-      // Оновлення даних категорії
-      await this.categoryRepository.update(id, categoryData)
-
-      const updatedTranslations = []
-
+      const { translationList } = updateCategoryDto
       for (const translationData of translationList) {
-        const existingTranslation = category.translationList.find((t) => t.lang === translationData.lang)
+        const translationToUpdate = await this.translationRepository.findOneOrFail({
+          where: { id: translationData.id },
+          relations: ['category'],
+        })
 
-        if (existingTranslation) {
-          existingTranslation.title = translationData.title
-          existingTranslation.description = translationData.description
-          await this.translationRepository.save(existingTranslation)
-          updatedTranslations.push(existingTranslation)
-        } else {
-          const newTranslation = this.translationRepository.create({
-            ...translationData,
-            category: category,
-          })
+        translationToUpdate.title = translationData.title
 
-          updatedTranslations.push(newTranslation)
-        }
+        const categoryToUpdate = translationToUpdate.category
+
+        categoryToUpdate.updatedAt = new Date()
+        categoryToUpdate.publishedAt = true
+
+        const categoryRepository = this.categoryRepository
+
+        await categoryRepository.save(categoryToUpdate)
+
+        await this.translationRepository.save(translationToUpdate)
       }
 
-      category.translationList = updatedTranslations
-
-      // Оновлення екземпляру категорії у базі даних
-      const updatedCategory = await this.categoryRepository.save(category)
-
-      return updatedCategory
+      return [1]
     } catch (error: any) {
       throw new HttpException(`Failed to update category: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR)
     }
@@ -78,10 +61,10 @@ export class CategoryDataMapper {
     await Promise.all(
       translationList.map(async (translationDto) => {
         const { lang, title, description } = translationDto
-        const translation = new Translation()
+        const translation = new NewsCategoryTranslation()
+
         translation.lang = lang
         translation.title = title
-        translation.description = description
         translation.category = category
         await this.translationRepository.save(translation)
       }),

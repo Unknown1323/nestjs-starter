@@ -8,8 +8,5 @@ export class CreateTranslationDto {
   @IsString()
   title?: string
 
-  @IsString()
-  description?: string
-
   thumbnailUrl?: string
 }

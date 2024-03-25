@@ -3,8 +3,9 @@ import { Command } from 'nestjs-command'
 import { EntityManager } from 'typeorm'
 
 import { NewsCategory } from 'src/modules/main/entities/news-category.entity'
+import { NewsTranslation } from 'src/modules/main/entities/news-translation.entity'
+import { NewsCategoryTranslation } from 'src/modules/main/entities/news-category-translation.entity'
 import { News } from 'src/modules/main/entities/news.entity'
-import { Translation } from 'src/modules/main/entities/translation.entity'
 
 @Injectable()
 export class NewsSeedService {
@@ -27,7 +28,7 @@ export class NewsSeedService {
       },
     ])
 
-    const translations = await this.entityManager.save(Translation, [
+    const translations = await this.entityManager.save(NewsTranslation, [
       {
         lang: 'uk',
         title: 'Новина 1',
@@ -58,8 +59,32 @@ export class NewsSeedService {
       },
     ])
 
+    const categoryTranslations = await this.entityManager.save(NewsCategoryTranslation, [
+      {
+        lang: 'uk',
+        title: 'Категорія 1',
+        news: categories[0],
+      },
+      {
+        lang: 'en',
+        title: 'Category 1',
+        news: categories[0],
+      },
+      {
+        lang: 'uk',
+        title: 'Категорія 2',
+        news: categories[1],
+      },
+      {
+        lang: 'en',
+        title: 'Category 2',
+        news: categories[1],
+      },
+    ])
+
     await this.entityManager.save(NewsCategory, categories)
     await this.entityManager.save(News, news)
-    await this.entityManager.save(Translation, translations)
+    await this.entityManager.save(NewsTranslation, translations)
+    await this.entityManager.save(NewsCategoryTranslation, categoryTranslations)
   }
 }
