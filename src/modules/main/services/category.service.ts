@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
-import { Repository } from 'typeorm'
+import { Repository, FindManyOptions } from 'typeorm'
 
 import { CreateCategoryNewsDto } from 'src/modules/main/dto/requests/create-news-category.dto'
 
@@ -19,13 +19,28 @@ export class NewsCategoryService {
     private translationRepository: Repository<NewsCategoryTranslation>,
   ) {}
 
-  async findAll(startIndex = 0, endIndex = 10): Promise<{ categories: NewsCategory[]; total: number }> {
+  async findAll(
+    sortColumn?: string,
+    sortDirection?: 'ASC' | 'DESC',
+    startIndex = 0,
+    endIndex = 10,
+  ): Promise<{ categories: NewsCategory[]; total: number }> {
     const correctedStartIndex = Math.max(startIndex - 1, 0)
-    const categories = await this.categoryRepository.find({
+
+    const options: FindManyOptions<NewsCategory> = {
       relations: ['translationList'],
       skip: correctedStartIndex,
       take: endIndex - correctedStartIndex,
-    })
+    }
+
+    if (sortColumn && sortDirection) {
+      options.order = {
+        [sortColumn]: sortDirection,
+      }
+    }
+
+    const categories = await this.categoryRepository.find(options)
+
     const total = await this.categoryRepository.count()
 
     return { categories, total }
@@ -61,7 +76,7 @@ export class NewsCategoryService {
     return await this.newsDataMapper.createCategoryWithTranslations(categoryNewsDto)
   }
 
-  async update(id: string, updateCategoryDto: CreateCategoryNewsDto): Promise<NewsCategory> {
+  async update(id: string, updateCategoryDto: CreateCategoryNewsDto): Promise<any> {
     return await this.newsDataMapper.updateCategoryWithTranslations(id, updateCategoryDto)
   }
 

@@ -84,11 +84,12 @@ export class NewsController {
   async update(
     @Param('id') id: string,
     @Body(new ValidationPipe()) updateNewsDto: UpdateNewsDto,
-  ): Promise<UpdateNewsDto> {
+  ): Promise<{ data: Date }> {
     try {
       const updatedNews = await this.newsService.update(id, updateNewsDto)
+      const updatedDate: Date = updatedNews.date // assuming date is a Date object
 
-      return updatedNews
+      return { data: updatedNews }
     } catch (error) {
       throw new HttpException('Failed to update news1', HttpStatus.INTERNAL_SERVER_ERROR)
     }

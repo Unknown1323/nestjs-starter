@@ -30,10 +30,17 @@ export class CategoryController {
 
   @Get('/list')
   async findAll(
+    @Query('sortColumn') sortColumn?: string,
+    @Query('sortDirection') sortDirection?: 'ASC' | 'DESC',
     @Query('startIndex') startIndex?: number,
     @Query('endIndex') endIndex?: number,
   ): Promise<{ data: NewsCategory[]; meta: { total: number } }> {
-    const { categories, total } = await this.newsCategoryService.findAll(startIndex, endIndex)
+    const { categories, total } = await this.newsCategoryService.findAll(
+      sortColumn,
+      sortDirection,
+      startIndex,
+      endIndex,
+    )
 
     return { data: categories, meta: { total } }
   }

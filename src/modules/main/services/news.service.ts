@@ -55,11 +55,11 @@ export class NewsService {
         ])
 
       if (sortColumn === 'title') {
-        query.orderBy(`translationList.${sortColumn}`, sortDirection as 'ASC' | 'DESC')
+        query.orderBy(`translation.${sortColumn}`, sortDirection as 'ASC' | 'DESC' | undefined)
       } else if (sortColumn === 'newsCategory') {
-        query.orderBy(`translationList[0].title`, sortDirection as 'ASC' | 'DESC')
+        query.orderBy(`categoryTranslation.title`, sortDirection as 'ASC' | 'DESC' | undefined)
       } else if (sortDirection && (sortDirection.toUpperCase() === 'ASC' || sortDirection.toUpperCase() === 'DESC')) {
-        query.orderBy(`news.${sortColumn}`, sortDirection as 'ASC' | 'DESC')
+        query.orderBy(`news.${sortColumn}`, sortDirection as 'ASC' | 'DESC' | undefined)
       } else {
         query.orderBy(`news.id`, 'ASC')
       }

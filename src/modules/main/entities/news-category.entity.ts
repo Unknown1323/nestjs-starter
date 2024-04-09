@@ -9,7 +9,10 @@ export class NewsCategory {
   id: string
 
   @Column({ default: false })
-  publishedAt: boolean
+  isPublished: boolean
+
+  @Column({ type: 'timestamp', nullable: true })
+  publishedAt: Date
 
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   createdAt: Date

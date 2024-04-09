@@ -1,5 +1,5 @@
 export class UpdateNewsDto {
-  newsCategory?: { id: string } // Ідентифікатор категорії новин
+  newsCategory?: { id: string }
   translationList: {
     title: string
     description: string
@@ -16,5 +16,5 @@ export class UpdateNewsDto {
       ogImageUrl: string
     }
   }[]
-  publishedAt: Date // Дата публікації новини
+  publishedAt: Date
 }

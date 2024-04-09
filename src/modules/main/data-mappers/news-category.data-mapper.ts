@@ -28,9 +28,14 @@ export class CategoryDataMapper {
     return createdCategory
   }
 
-  async updateCategoryWithTranslations(id: string, updateCategoryDto: any): Promise<any> {
+  async updateCategoryWithTranslations(
+    id: string,
+    updateCategoryDto: any,
+  ): Promise<{ updatedCategories: NewsCategory[] }> {
     try {
       const { translationList } = updateCategoryDto
+      const updatedCategories: NewsCategory[] = []
+
       for (const translationData of translationList) {
         const translationToUpdate = await this.translationRepository.findOneOrFail({
           where: { id: translationData.id },
@@ -42,16 +47,16 @@ export class CategoryDataMapper {
         const categoryToUpdate = translationToUpdate.category
 
         categoryToUpdate.updatedAt = new Date()
-        categoryToUpdate.publishedAt = true
+        categoryToUpdate.publishedAt = new Date()
 
-        const categoryRepository = this.categoryRepository
-
-        await categoryRepository.save(categoryToUpdate)
+        const updatedCategory = await this.categoryRepository.save(categoryToUpdate)
 
         await this.translationRepository.save(translationToUpdate)
+
+        updatedCategories.push(updatedCategory)
       }
 
-      return [1]
+      return { updatedCategories }
     } catch (error: any) {
       throw new HttpException(`Failed to update category: ${error.message}`, HttpStatus.INTERNAL_SERVER_ERROR)
     }
